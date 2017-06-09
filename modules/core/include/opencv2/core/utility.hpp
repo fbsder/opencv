@@ -54,6 +54,7 @@
 #endif
 
 #include "opencv2/core.hpp"
+#include <ostream>
 
 namespace cv
 {
@@ -507,7 +508,7 @@ void Mat::forEach_impl(const Functor& operation) {
                     this->rowCall2(row, COLS);
                 }
             } else {
-                std::vector<int> idx(COLS); /// idx is modified in this->rowCall
+                std::vector<int> idx(DIMS); /// idx is modified in this->rowCall
                 idx[DIMS - 2] = range.start - 1;
 
                 for (int line_num = range.start; line_num < range.end; ++line_num) {
@@ -627,6 +628,9 @@ public:
     virtual void  deleteDataInstance(void* pData) const = 0;
 
     int key_;
+
+public:
+    void cleanup(); //! Release created TLS data container objects. It is similar to release() call, but it keeps TLS container valid.
 };
 
 // Main TLS data class
@@ -638,12 +642,14 @@ public:
     inline ~TLSData()       { release();            } // Release key and delete associated data
     inline T* get() const   { return (T*)getData(); } // Get data associated with key
 
-     // Get data from all threads
+    // Get data from all threads
     inline void gather(std::vector<T*> &data) const
     {
         std::vector<void*> &dataVoid = reinterpret_cast<std::vector<void*>&>(data);
         gatherData(dataVoid);
     }
+
+    inline void cleanup() { TLSDataContainer::cleanup(); }
 
 private:
     virtual void* createDataInstance() const {return new T;}                // Wrapper to allocate data by template
